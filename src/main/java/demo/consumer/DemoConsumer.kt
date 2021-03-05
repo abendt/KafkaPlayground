@@ -20,44 +20,36 @@ class DemoConsumer(val demoService: DemoService, val errorHandler: ErrorHandler)
         topics = ["\${kafka.demotopic.topicname}"],
         containerFactory = "demoTopicListenerContainerFactory"
     )
-    private fun receive(rawEvents: List<String>) {
-
-        logger.debug { "rawEvents $rawEvents" }
-
-        val parsedEvents: List<RawEvent> = rawEvents.mapNotNull {
-            try {
-                objectMapper.readValue<RawEvent>(it)
-            } catch (e: Exception) {
-                // invalid payload
-                logger.warn(e) { "skipping invalid event $it" }
-
-                errorHandler.handleInvalidEvent(it)
-
-                null
-            }
-        }
+    private fun receive(parsedEvents: List<RawEvent?>) {
 
         logger.debug { "parsedEvents $parsedEvents" }
 
         val actions: List<Action> = parsedEvents.mapNotNull {
-            when (it.action) {
-                "DELETE" -> DeleteItem(it.id)
 
-                "ADD" ->
-                    if (it.content == null) {
-                        logger.warn { "skipping incomplete event" }
+            if (it == null) {
+                errorHandler.handleInvalidEvent("")
+                null
+            } else {
 
+                when (it.action) {
+                    "DELETE" -> DeleteItem(it.id)
+
+                    "ADD" ->
+                        if (it.content == null) {
+                            logger.warn { "skipping incomplete event" }
+
+                            errorHandler.handleInvalidAction(it)
+
+                            null
+                        } else {
+                            AddItem(it.id, it.content)
+                        }
+
+                    else -> {
                         errorHandler.handleInvalidAction(it)
 
                         null
-                    } else {
-                        AddItem(it.id, it.content)
                     }
-
-                else -> {
-                    errorHandler.handleInvalidAction(it)
-
-                    null
                 }
             }
         }

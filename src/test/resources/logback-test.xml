@@ -14,11 +14,12 @@
 
     <logger name="demo" level="DEBUG"/>
     <logger name="org.testcontainers" level="INFO"/>
+    <logger name="org.apache.kafka.clients.NetworkClient" level="ERROR"/>
 
     <!--
     <logger name="org.springframework.security" level="DEBUG"/>
 -->
-    <root level="INFO">
+    <root level="WARN">
         <appender-ref ref="CONSOLE"/>
     </root>
 </configuration>

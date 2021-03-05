@@ -15,6 +15,8 @@ import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.listener.BatchErrorHandler
 import org.springframework.kafka.listener.ContainerProperties
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+import org.springframework.kafka.support.serializer.JsonDeserializer
 import javax.annotation.PreDestroy
 
 @Configuration
@@ -33,15 +35,11 @@ class KafkaConsumerConfig(
 
     private val logger = KotlinLogging.logger {}
 
-    private fun kafkaConsumerFactory(): ConsumerFactory<String, String> {
+    private fun kafkaConsumerFactory(): ConsumerFactory<String, RawEvent> {
         val props = mapOf(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapAddress,
 
             ConsumerConfig.GROUP_ID_CONFIG to groupId,
-
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
 
             ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to "false",
 
@@ -50,12 +48,13 @@ class KafkaConsumerConfig(
             ConsumerConfig.MAX_POLL_RECORDS_CONFIG to "50"
         )
 
-        return DefaultKafkaConsumerFactory(props)
+        val deserializer = ErrorHandlingDeserializer(JsonDeserializer(RawEvent::class.java))
+        return DefaultKafkaConsumerFactory(props, StringDeserializer(), deserializer)
     }
 
     @Bean
-    fun demoTopicListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> =
-        ConcurrentKafkaListenerContainerFactory<String, String>().apply {
+    fun demoTopicListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, RawEvent> =
+        ConcurrentKafkaListenerContainerFactory<String, RawEvent>().apply {
             consumerFactory = kafkaConsumerFactory()
             isBatchListener = true
             containerProperties.ackMode = ContainerProperties.AckMode.BATCH
@@ -66,7 +65,10 @@ class KafkaConsumerConfig(
 
     private fun kafkaErrorHandler() = BatchErrorHandler { ex, data ->
 
-        logger.warn(ex) { "kafka error: $data" }
+        data.iterator().forEach {
+            logger.warn(ex) { "kafka error: ${it}" }
+        }
+
       /*
         val rootCause = Throwables.getRootCause(ex)
 

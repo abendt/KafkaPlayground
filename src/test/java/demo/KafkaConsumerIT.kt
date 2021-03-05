@@ -20,7 +20,7 @@ class KafkaConsumerIT : KafkaTestcase() {
     @Autowired
     lateinit var kafkaTemplate: KafkaTemplate<String, String>
 
-    @MockkBean
+    @SpykBean
     lateinit var demoService: DemoService
 
     @SpykBean
