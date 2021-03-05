@@ -20,26 +20,26 @@ class DemoConsumer(val demoService: DemoService, val errorHandler: ErrorHandler)
         topics = ["\${kafka.demotopic.topicname}"],
         containerFactory = "demoTopicListenerContainerFactory"
     )
-    private fun receive(events: List<String>) {
+    private fun receive(rawEvents: List<String>) {
 
-        logger.debug { "events $events" }
+        logger.debug { "rawEvents $rawEvents" }
 
-        val rawEvents = events.mapNotNull {
+        val parsedEvents: List<RawEvent> = rawEvents.mapNotNull {
             try {
                 objectMapper.readValue<RawEvent>(it)
             } catch (e: Exception) {
                 // invalid payload
                 logger.warn(e) { "skipping invalid event $it" }
 
-                errorHandler.handlePayloadError(it)
+                errorHandler.handleInvalidEvent(it)
 
                 null
             }
         }
 
-        logger.debug { "rawEvents $rawEvents" }
+        logger.debug { "parsedEvents $parsedEvents" }
 
-        val actions = rawEvents.mapNotNull {
+        val actions: List<Action> = parsedEvents.mapNotNull {
             when (it.action) {
                 "DELETE" -> DeleteItem(it.id)
 
@@ -64,13 +64,13 @@ class DemoConsumer(val demoService: DemoService, val errorHandler: ErrorHandler)
 
         logger.debug { "Actions $actions" }
 
-        demoService.handleEvent(actions)
+        demoService.handleActions(actions)
     }
 }
 
 @Service
 class ErrorHandler {
-    fun handlePayloadError(rawEvent: String) {
+    fun handleInvalidEvent(rawEvent: String) {
     }
 
     fun handleInvalidAction(rawEvent: RawEvent) {

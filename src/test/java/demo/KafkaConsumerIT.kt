@@ -35,36 +35,36 @@ class KafkaConsumerIT : KafkaTestcase() {
     fun canSendSomethingToKafka() {
         kafkaTemplate.send("myTopic", "hello")
 
-        verify(timeout = 5000) { demoService.handleEvent(any()) }
+        verify(timeout = 5000) { demoService.handleActions(any()) }
     }
 
     @Test
     fun canSendDelete() {
         kafkaTemplate.send("myTopic", """{"action": "DELETE", "id": "myId"}""")
 
-        verify(timeout = 5000) { demoService.handleEvent(withArg { list -> list.find { it is DeleteItem } }) }
+        verify(timeout = 5000) { demoService.handleActions(withArg { list -> list.find { it is DeleteItem } }) }
     }
 
     @Test
     fun canSendAdd() {
         kafkaTemplate.send("myTopic", """{"action": "ADD", "id": "myId", "content", "myContent"}""")
 
-        verify(timeout = 5000) { demoService.handleEvent(withArg { list -> list.find { it is AddItem } }) }
+        verify(timeout = 5000) { demoService.handleActions(withArg { list -> list.find { it is AddItem } }) }
     }
 
     @Test
     fun canHandleWrongFormat() {
         kafkaTemplate.send("myTopic", """{"action": "ADD fooBar """)
 
-        verify(timeout = 5000) { demoService.handleEvent(emptyList()) }
-        verify(timeout = 5000) { errorHandler.handlePayloadError(any()) }
+        verify(timeout = 5000) { demoService.handleActions(emptyList()) }
+        verify(timeout = 5000) { errorHandler.handleInvalidEvent(any()) }
     }
 
     @Test
     fun canHandleWrongContract() {
         kafkaTemplate.send("myTopic", """{"action": "ADD", "id": "myId"}""")
 
-        verify(timeout = 5000) { demoService.handleEvent(emptyList()) }
+        verify(timeout = 5000) { demoService.handleActions(emptyList()) }
         verify(timeout = 5000) { errorHandler.handleInvalidAction(any()) }
     }
 }
